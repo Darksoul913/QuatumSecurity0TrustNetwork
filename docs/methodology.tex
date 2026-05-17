@@ -1,0 +1,128 @@
+\section{Methodology}
+
+\subsection{System Overview}
+The proposed architecture introduces a hybrid quantum-classical security orchestration layer designed to bridge physical-layer quantum cryptography with application-layer Zero-Trust Policy Enforcement. The system models an Alice (Transmitter) and Bob (Receiver) node communication pipeline. At its core, the architecture pioneers a cross-layer integration concept: physical quantum disturbances are no longer treated merely as cryptographic abort conditions, but are actively extracted as continuous cyber-physical telemetry. 
+
+This telemetry flows into a Machine Learning risk analysis engine, which operates in tandem with a Quantum-Assisted Tamper Signaling (G2) layer. These independent intelligence streams converge at a Zero-Trust Policy Enforcer that makes the final adaptive access decision. 
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\linewidth]{fig5_decision_flow.png}}
+\caption{System Architecture Diagram detailing the end-to-end integration of BB84 QKD, QBER Telemetry extraction, QSVM risk analysis, and G2 tamper signaling orchestrating a Zero-Trust decision flow.}
+\label{fig:architecture}
+\end{figure}
+
+The end-to-end workflow begins with classical mutual authentication, transitions to quantum state transmission for both key generation (BB84) and tamper signaling (G1/G2), fuses the resulting quantum telemetry with application metadata, evaluates the transmission context via a Variational Quantum Classifier (VQC), and ultimately executes a deterministic ALLOW or BLOCK decision prior to payload decryption.
+
+\subsection{System Architecture}
+The system is stratified into a modular, layered architecture to maintain strict separation of concerns between cryptographic primitives and policy enforcement.
+
+\subsubsection{Communication Infrastructure}
+The foundation utilizes a Python socket-based quantum channel abstraction capable of transmitting serialized Qiskit \texttt{Statevector} objects. Prior to quantum exchange, the channel is secured via Transport Layer Security (TLS 1.3) mutual authentication. The simulation operates on a multi-process orchestration framework, ensuring strict Alice/Bob node separation. A dedicated noise injection module simulates both non-adversarial environmental drift and active adversarial (Eve) attack mechanisms. To ensure reproducibility across Monte Carlo evaluation trials, deterministic seed enforcement is strictly maintained, except during Eve's isolated measurements to preserve uncertainty dynamics.
+
+\subsubsection{Quantum Key Distribution Layer}
+The cryptographic foundation is built upon a simulated BB84 workflow. Alice prepares quantum states by encoding random bits into randomly selected conjugate bases (rectilinear or diagonal). Upon quantum transmission, Bob measures the states in his independently chosen bases. Following public basis reconciliation, the keys are sifted. 
+
+The Quantum Bit Error Rate (QBER) is defined as:
+\begin{equation}
+Q = \frac{e}{n}
+\end{equation}
+where $e$ represents the number of bit errors and $n$ represents the total sifted key length. Following error correction via Cascade-lite reconciliation, the protocol executes SHA-256 privacy amplification to derive a secure AES-256-GCM session key. Under an active Eve intercept-resend attack, Eve's mid-channel measurements collapse the quantum states, forcing an expected QBER increase of 25\%, satisfying theoretical BB84 security bounds.
+
+\subsubsection{Quantum Telemetry Extraction}
+Unlike traditional QKD systems that simply abort upon exceeding a static error threshold, this architecture extracts QBER as a continuous physical-layer metric via rolling-window monitoring. The statistical features extracted include the QBER mean, QBER variance, and the frequency of threshold burst crossings over a window $W$. 
+
+The rolling statistics are defined as:
+\begin{equation}
+\bar{q} = \frac{1}{W} \sum_{i=1}^{W} q_i
+\end{equation}
+\begin{equation}
+\sigma_q^2 = \frac{1}{W-1} \sum_{i=1}^{W} (q_i - \bar{q})^2
+\end{equation}
+
+By treating QBER as cyber-physical telemetry rather than an isolated hardware abort condition, the system grants the upper application layers deep observability into the physical state of the transmission medium.
+
+\subsection{Feature Engineering Pipeline}
+
+\subsubsection{Classical Feature Extraction}
+Parallel to the physical layer, the application layer processes metadata from the payload context (e.g., HTTP request URLs). Using a malicious URL dataset, classical metadata features are extracted, primarily URL length and Shannon entropy. 
+The Shannon entropy for a URL string $u$ with character distribution $p(c)$ over alphabet $\mathcal{A}$ is given by:
+\begin{equation}
+H(u) = -\sum_{c \in \mathcal{A}} p(c) \log_2 p(c)
+\end{equation}
+
+\subsubsection{Cross-Layer Feature Fusion}
+The core innovation of the data pipeline is the fusion of application-layer and physical-layer features into a unified 5-dimensional feature vector:
+\begin{equation}
+\mathbf{x} = \begin{bmatrix} \ell(u) \\ H(u) \\ \bar{q} \\ \sigma_q^2 \\ C_q \end{bmatrix} \in \mathbb{R}^5
+\end{equation}
+This fusion is motivated by the inadequacy of isolated QBER thresholds in noisy environments. By combining these dimensions, the system can dynamically distinguish between a noisy benign channel and a low-footprint stealth attack that might otherwise slip beneath a static QBER cutoff.
+
+\subsection{Machine Learning Risk Engine}
+
+\subsubsection{Classical Baseline Models}
+To rigorously benchmark the system, the pipeline evaluates classical baselines including a Support Vector Machine with an RBF kernel and a Random Forest classifier. Hyperparameters were tuned for the constrained feature space, and the models were rigorously evaluated using a 5-fold Stratified Cross-Validation setup.
+
+\subsubsection{QSVM/VQC Model}
+The quantum-native evaluation utilizes a Variational Quantum Classifier (VQC). The 5D feature vector is embedded into a quantum state via a \texttt{ZZFeatureMap}:
+\begin{equation}
+|\phi(\mathbf{x})\rangle = U_\phi(\mathbf{x})|0\rangle^{\otimes n}
+\end{equation}
+This specific feature map was selected for its pairwise entanglement interactions, which theoretically map nonlinear interactions between the application metadata and physical telemetry. We do not claim quantum superiority in this implementation; given current Noisy Intermediate-Scale Quantum (NISQ) limitations and the small feature dimensionality, this serves strictly as an exploratory quantum-native risk modeling framework demonstrating architectural viability.
+
+\subsection{Quantum-Assisted Tamper Signaling Layer}
+
+\subsubsection{G1 State Construction}
+Complementing classical authenticated encryption, the system implements a Quantum-Assisted Tamper Signaling protocol. The sender (G1) computes the SHA-256 hash of the AES-GCM ciphertext, normalizes it, and maps it to a rotation angle $\theta$:
+\begin{equation}
+\theta = \frac{(\mathrm{SHA256}(C) \bmod 10000)}{10000} \cdot 2\pi
+\end{equation}
+An ancilla qubit is then rotated by this angle and transmitted out-of-band:
+\begin{equation}
+|\psi_{G1}\rangle = R_y(\theta)|0\rangle
+\end{equation}
+
+\subsubsection{G2 Tamper Signal Verification}
+Upon receiving the ciphertext, the receiver computes the expected angle $\phi$ and applies the inverse rotation $R_y(-\phi)$ to the received ancilla state. If the ciphertext is unaltered ($\theta = \phi$), the state returns deterministically to $|0\rangle$. If tampering has occurred (producing an angular deviation $\delta$), the probability of anomalous detection is:
+\begin{equation}
+\Pr[\mathrm{detect}] = \sin^2\frac{\delta}{2}
+\end{equation}
+This provides a probabilistic, out-of-band tamper signal. It establishes defense-in-depth through computational-domain separation, as the quantum tripwire operates outside the bounds of classical cryptographic attacks. The current implementation uses a single-qubit proof-of-concept, acknowledging that cryptographic-grade detection requires multi-qubit amplification.
+
+\subsection{Zero-Trust Policy Enforcement}
+The orchestrator culminates at the Policy Enforcer, which evaluates both the ML Risk Score $r \in \{0,1,2,3\}$ and the G2 Tamper Signal $g \in \{0, 1\}$. The adaptive runtime logic is formalized as:
+\begin{equation}
+\mathcal{D}(r, g) = \begin{cases} \text{BLOCK} & g = 1 \\ \text{BLOCK} & r \ge 2 \\ \text{ALLOW} & \text{otherwise} \end{cases}
+\end{equation}
+Priority ordering dictates that a physical-layer anomaly ($g=1$) immediately overrides any benign classification by the ML engine, ensuring mathematical physics precedes probabilistic machine learning.
+
+\subsection{Experimental Setup}
+
+\subsubsection{Hardware and Software Environment}
+The simulation was executed on a local CPU architecture utilizing Python 3.12. Quantum circuits and statevector simulations were powered by Qiskit 0.46 and Qiskit-Machine-Learning 0.7.2, with classical data processing handled by Scikit-Learn, Pandas, and NumPy.
+
+\subsubsection{Dataset Preparation}
+The base application data was sourced from an open-source Malicious URL dataset. To prevent artificial separability, the synthetic telemetry generator intentionally modeled realistic QBER overlap. The distribution enforces that approximately 15\% of benign traffic experiences high-noise environmental drift, while 10\% of attacks exhibit stealthy, low-QBER footprints. This forced the classifiers to learn true fusion boundaries during the train/test splits.
+
+\subsubsection{Simulation Scenarios}
+Evaluation spanned three discrete network scenarios: 
+1) A Clean Channel baseline,
+2) Active Eve Intercept-Resend,
+3) Environmental Noise drift. 
+Each variant was subjected to Monte Carlo simulation trials to ensure statistical significance across randomized payload injections.
+
+\subsection{Comparative Evaluation Methodology}
+The ML Risk Engine was evaluated using 5-fold Stratified Cross-Validation on identical datasets across all models to ensure a fair comparison. The recorded metrics included Accuracy, Precision, Recall, Macro-F1, ROC-AUC, and inference latency. 
+
+\subsection{Ablation Study Design}
+To isolate and prove the necessity of individual architectural components, a 7-variant Ablation Matrix (A0-A6) was executed. Components (QBER features, ML Engine, G2 Tamper Signaling, Adaptive Enforcement, QKD) were systematically removed via configuration flags. The resulting degradation in True Positive Rate (TPR), False Positive Rate (FPR), Key Agreement, and Decryption Success proved the structural necessity of the proposed cross-layer fusion.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=\linewidth]{fig3_ablation_study.png}}
+\caption{Ablation Study Comparison illustrating severe degradation in detection and decryption success rates when quantum components are removed.}
+\label{fig:ablation}
+\end{figure}
+
+\subsection{Threat Model and Assumptions}
+The evaluation adheres to a defined threat model. A \textit{Passive Eve} observing only classical channels is neutralized by TLS and AES-GCM. An \textit{Active Eve} performing intercept-resend attacks on the quantum channel is actively detected via QBER telemetry and G2 anomaly signaling. Against a theoretical \textit{Quantum-Capable Eve} wielding Shor's Algorithm, the BB84-derived key exchange remains information-theoretically secure.
+
+The architecture explicitly relies on a trusted telemetry assumption: it assumes QBER extraction hardware within the receiver enclave is secure. Out-of-scope attacks such as telemetry spoofing, direct hardware sensor manipulation, and ML model poisoning remain unaddressed and delineate the boundaries of this simulation.

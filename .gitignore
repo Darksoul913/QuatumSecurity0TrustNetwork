@@ -1,0 +1,46 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Project-specific generated directories
+certs/
+models/
+data/processed/
+evaluation/results/
+
+# LaTeX build artifacts (from docs/)
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.gz
+*.synctex.gz
+*.pdf
+
+# macOS specific
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+#dataset
+data/raw/dataset.csv
