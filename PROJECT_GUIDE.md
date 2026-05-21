@@ -95,17 +95,17 @@ sequenceDiagram
 Below is the file-by-file inventory of the codebase, organized by component.
 
 ### 3.1 Network Nodes & Simulation Controllers
-* **[simulate.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/simulate.py)**
+* **[simulate.py](simulate.py)**
   * The main entry point for a single session execution.
   * Coordinates Alice and Bob nodes, allows setting command-line overrides (e.g. `--eve` to inject an eavesdropper, `--noise <float>` to adjust channel noise, or a custom `--payload`).
-* **[stream_simulation.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/stream_simulation.py)**
+* **[stream_simulation.py](stream_simulation.py)**
   * Spawns a real-time, continuous traffic simulation.
   * Dynamically rolls random channel states (Clean, Noisy, Eavesdropped) for each request.
   * Computes feature engineering on-the-fly and prints a real-time, color-coded terminal dashboard resembling a Security Operations Center (SOC) monitor.
-* **[alice_node.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/alice_node.py)**
+* **[alice_node.py](alice_node.py)**
   * Implements the sender node's simulation loop.
   * Handles mTLS client connection, BB84 state generation, sifting negotiations, key reconciliation, AES-GCM encryption, and G1 statevector preparation.
-* **[bob_node.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/bob_node.py)**
+* **[bob_node.py](bob_node.py)**
   * Implements the receiver node's server loop.
   * Measures quantum states, coordinates key sifting, monitors QBER metrics, executes feature engineering, runs the ML/QSVM risk engine, measures G2 tamper status, runs the ZT policy enforcer, and saves structured JSON logs.
 
@@ -113,59 +113,59 @@ Below is the file-by-file inventory of the codebase, organized by component.
 The `src/` directory contains the foundational libraries supporting the zero-trust pipeline.
 
 #### Authentication (`src/auth/`)
-* **[tls_client.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/auth/tls_client.py)**: A wrapper configuring Python's `ssl` library to establish mutual TLS (mTLS) client sockets requiring CA and peer validation.
-* **[tls_server.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/auth/tls_server.py)**: Configures `ssl` for a secure mTLS server socket that validates client certificates.
+* **[tls_client.py](src/auth/tls_client.py)**: A wrapper configuring Python's `ssl` library to establish mutual TLS (mTLS) client sockets requiring CA and peer validation.
+* **[tls_server.py](src/auth/tls_server.py)**: Configures `ssl` for a secure mTLS server socket that validates client certificates.
 
 #### Cryptography (`src/crypto/`)
-* **[aes_gcm.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/crypto/aes_gcm.py)**: Handles encryption and decryption using AES-256 in GCM mode (Galois/Counter Mode), guaranteeing payload confidentiality and cryptographic authenticity.
+* **[aes_gcm.py](src/crypto/aes_gcm.py)**: Handles encryption and decryption using AES-256 in GCM mode (Galois/Counter Mode), guaranteeing payload confidentiality and cryptographic authenticity.
 
 #### Infrastructure (`src/infrastructure/`)
-* **[channel.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/infrastructure/channel.py)**: Simulates the physical transmission channels (the classical TCP sockets and the simulated quantum fiber channel).
-* **[noise.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/infrastructure/noise.py)**: Implements depolarization and bit-flip noise models for the quantum channel.
-* **[config.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/infrastructure/config.py)**: Handles configuration parameters, constants, and logging paths.
-* **[logger.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/infrastructure/logger.py)**: Structured logging utilities (including `log_structured_event` using JSON schema) for auditability.
+* **[channel.py](src/infrastructure/channel.py)**: Simulates the physical transmission channels (the classical TCP sockets and the simulated quantum fiber channel).
+* **[noise.py](src/infrastructure/noise.py)**: Implements depolarization and bit-flip noise models for the quantum channel.
+* **[config.py](src/infrastructure/config.py)**: Handles configuration parameters, constants, and logging paths.
+* **[logger.py](src/infrastructure/logger.py)**: Structured logging utilities (including `log_structured_event` using JSON schema) for auditability.
 
 #### Quantum Integrity signaling (`src/integrity/`)
-* **[g1_sender.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/integrity/g1_sender.py)**: Hashes the ciphertext, maps it to a rotation angle, and returns a single-qubit quantum state vector.
-* **[g2_receiver.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/integrity/g2_receiver.py)**: Applies the inverse rotation to the received qubit and performs a computational basis measurement. Yields `tamper_anomaly` (boolean) and `tamper_signal` (string state representation).
+* **[g1_sender.py](src/integrity/g1_sender.py)**: Hashes the ciphertext, maps it to a rotation angle, and returns a single-qubit quantum state vector.
+* **[g2_receiver.py](src/integrity/g2_receiver.py)**: Applies the inverse rotation to the received qubit and performs a computational basis measurement. Yields `tamper_anomaly` (boolean) and `tamper_signal` (string state representation).
 
 #### Machine Learning Risk Engine (`src/ml/`)
-* **[qsvm.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/ml/qsvm.py)**: Defines the Quantum Support Vector Classifier architecture using `qiskit_machine_learning` kernels and a `ZZFeatureMap`.
-* **[feature_vector.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/ml/feature_vector.py)**: Implements the `CentralScaler` class. It manages fit parameters, scales features centrally, and acts as the source-of-truth for normalization parameters across dataset generation, training, and execution.
-* **[feature_engineering.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/ml/feature_engineering.py)**: Contains methods to compute URL structural properties (length, character entropy) and statistical QBER metrics.
-* **[model_loader.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/ml/model_loader.py)**: Loads trained QSVM weights from `models/qsvm_weights.npy`. If weights are missing, it automatically trains and loads a classical `ClassicalFallbackClassifier` (RBF SVM) on-the-fly to guarantee zero downtime.
-* **[dataset.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/ml/dataset.py)**: PyTorch and Qiskit dataset wrapper classes.
-* **[train.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/ml/train.py)**: Training script that preprocesses features, executes QSVM fitting, and outputs the model weights file.
+* **[qsvm.py](src/ml/qsvm.py)**: Defines the Quantum Support Vector Classifier architecture using `qiskit_machine_learning` kernels and a `ZZFeatureMap`.
+* **[feature_vector.py](src/ml/feature_vector.py)**: Implements the `CentralScaler` class. It manages fit parameters, scales features centrally, and acts as the source-of-truth for normalization parameters across dataset generation, training, and execution.
+* **[feature_engineering.py](src/ml/feature_engineering.py)**: Contains methods to compute URL structural properties (length, character entropy) and statistical QBER metrics.
+* **[model_loader.py](src/ml/model_loader.py)**: Loads trained QSVM weights from `models/qsvm_weights.npy`. If weights are missing, it automatically trains and loads a classical `ClassicalFallbackClassifier` (RBF SVM) on-the-fly to guarantee zero downtime.
+* **[dataset.py](src/ml/dataset.py)**: PyTorch and Qiskit dataset wrapper classes.
+* **[train.py](src/ml/train.py)**: Training script that preprocesses features, executes QSVM fitting, and outputs the model weights file.
 
 #### Policy Enforcement (`src/policy/`)
-* **[enforcer.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/policy/enforcer.py)**: The Zero-Trust Policy Engine. It evaluates classical/quantum inputs (`tls_authenticated`, `qber_check`, `ml_risk`, `g2_tamper`) against adaptive thresholds to output an authorization verdict.
+* **[enforcer.py](src/policy/enforcer.py)**: The Zero-Trust Policy Engine. It evaluates classical/quantum inputs (`tls_authenticated`, `qber_check`, `ml_risk`, `g2_tamper`) against adaptive thresholds to output an authorization verdict.
 
 #### Quantum Key Distribution (`src/qkd/`)
-* **[alice.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/qkd/alice.py)**: Handles quantum state preparation for BB84.
-* **[bob.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/qkd/bob.py)**: Handles basis selection and measurements for BB84.
-* **[sifting.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/qkd/sifting.py)**: Negotiates which key elements to retain based on base matching.
-* **[reconciliation.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/qkd/reconciliation.py)**: Corrects transmission bit-flips (error reconciliation).
-* **[privacy_amplification.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/qkd/privacy_amplification.py)**: Shrinks the reconciled key into a secure, final AES key.
+* **[alice.py](src/qkd/alice.py)**: Handles quantum state preparation for BB84.
+* **[bob.py](src/qkd/bob.py)**: Handles basis selection and measurements for BB84.
+* **[sifting.py](src/qkd/sifting.py)**: Negotiates which key elements to retain based on base matching.
+* **[reconciliation.py](src/qkd/reconciliation.py)**: Corrects transmission bit-flips (error reconciliation).
+* **[privacy_amplification.py](src/qkd/privacy_amplification.py)**: Shrinks the reconciled key into a secure, final AES key.
 
 #### Legacy Telemetry Wrapper (`src/telemetry/`)
-* **[feature_vector.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/telemetry/feature_vector.py)**: Relic of the legacy code. It throws a deprecation warning and delegates directly to the central scaler in `src.ml.feature_vector`.
-* **[qber_monitor.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/src/telemetry/qber_monitor.py)**: Calculates statistical properties of the QBER over the transmission timeline (mean, variance, and crossing rate above thresholds).
+* **[feature_vector.py](src/telemetry/feature_vector.py)**: Relic of the legacy code. It throws a deprecation warning and delegates directly to the central scaler in `src.ml.feature_vector`.
+* **[qber_monitor.py](src/telemetry/qber_monitor.py)**: Calculates statistical properties of the QBER over the transmission timeline (mean, variance, and crossing rate above thresholds).
 
 ### 3.3 Dataset & Certs Generators
-* **[data/generate_dataset.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/data/generate_dataset.py)**
+* **[data/generate_dataset.py](data/generate_dataset.py)**
   * Creates a synthetic URL database, computes structural metrics, and simulates various QBER noise profiles.
   * Fits the `CentralScaler` parameters, scales the dataset, and saves training files alongside a `dataset_manifest.json`.
-* **[scripts/gen_certs.sh](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/scripts/gen_certs.sh)**
+* **[scripts/gen_certs.sh](scripts/gen_certs.sh)**
   * Bash script generating self-signed X.509 Certificates using openssl for mutual TLS (Alice, Bob, and CA root).
 
 ### 3.4 Evaluation & Plotting Tools
-* **[evaluation/ablation.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/evaluation/ablation.py)**
+* **[evaluation/ablation.py](evaluation/ablation.py)**
   * Runs the zero-trust system across seven variants (A0–A6), systematically turning off security elements (QKD, mTLS, ML risk engine, G2, etc.) to evaluate overall policy efficacy.
-* **[evaluation/compare_classifiers.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/evaluation/compare_classifiers.py)**
+* **[evaluation/compare_classifiers.py](evaluation/compare_classifiers.py)**
   * Runs cross-validation comparing Classical SVM, Random Forest, and QSVM, outputting a comparative performance CSV.
-* **[evaluation/compare_trust_models.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/evaluation/compare_trust_models.py)**
+* **[evaluation/compare_trust_models.py](evaluation/compare_trust_models.py)**
   * Monte Carlo simulator evaluating system risk response across different security scenarios.
-* **[evaluation/plot_results.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/evaluation/plot_results.py)** & **[evaluation/plot_advanced.py](file:///Users/Siddhesh/My-Files/VIT/SY/Sem2/EDI/Implementation/evaluation/plot_advanced.py)**
+* **[evaluation/plot_results.py](evaluation/plot_results.py)** & **[evaluation/plot_advanced.py](evaluation/plot_advanced.py)**
   * Generates publication-ready figures representing QBER probability densities, classifier comparisons, ROC curves, ablation scores, and the single-session Zero-Trust timeline.
 
 ---
