@@ -59,3 +59,11 @@ python simulate.py --eve --payload "Attack at dawn"
 ```bash
 python simulate.py --noise 0.05
 ```
+
+**4. Live Streaming SOC Dashboard (Randomized)**
+Simulates a continuous stream of traffic from the dataset, dynamically rolling random channel states (Clean, Noisy, Eavesdropped) per request, and displaying a real-time Security Operations Center (SOC) dashboard:
+```bash
+python stream_simulation.py --max-requests 20 --delay 1.2
+```
+* `--max-requests`: The number of requests to stream (default: `20`).
+* `--delay`: Time delay in seconds between requests (default: `1.2`).
