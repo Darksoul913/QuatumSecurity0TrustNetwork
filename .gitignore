@@ -27,6 +27,11 @@ evaluation/results/
 *.gz
 *.synctex.gz
 *.pdf
+*.bbl
+*.blg
+*.toc
+*.lof
+*.lot
 
 # macOS specific
 .DS_Store
@@ -42,5 +47,6 @@ evaluation/results/
 # Jupyter Notebook
 .ipynb_checkpoints
 
-#dataset
-data/raw/dataset.csv
+# Dataset and generated metadata
+data/raw/
+data/dataset_manifest.json

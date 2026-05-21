@@ -42,14 +42,24 @@ MAX_TRAIN_SAMPLES = 500  # Limit for QSVM CPU tractability
 EVE_ACTIVE = os.getenv("QZTN_EVE_ACTIVE", "0") == "1"
 ENV_NOISE_P = float(os.getenv("QZTN_ENV_NOISE_P", "0.0"))  # Environmental noise probability
 
+# Configurable logging path
+RUNTIME_LOG_PATH = os.path.join(BASE_DIR, "evaluation", "results", "runtime_events.jsonl")
+
 # Ablation flags. These default to the full architecture and are intentionally
 # controlled through environment variables so evaluation scripts can toggle
 # components without rewriting source files.
-ENABLE_QKD = os.getenv("QZTN_ENABLE_QKD", "1") == "1"
-ENABLE_QBER_TELEMETRY = os.getenv("QZTN_ENABLE_QBER_TELEMETRY", "1") == "1"
-ENABLE_ML_ENGINE = os.getenv("QZTN_ENABLE_ML_ENGINE", "1") == "1"
-ENABLE_G2_TAMPER_SIGNAL = os.getenv("QZTN_ENABLE_G2_TAMPER_SIGNAL", "1") == "1"
-ENABLE_ADAPTIVE_ENFORCEMENT = os.getenv("QZTN_ENABLE_ADAPTIVE_ENFORCEMENT", "1") == "1"
+USE_QKD = os.getenv("QZTN_USE_QKD", os.getenv("QZTN_ENABLE_QKD", "1")) == "1"
+USE_QBER = os.getenv("QZTN_USE_QBER", os.getenv("QZTN_ENABLE_QBER_TELEMETRY", "1")) == "1"
+USE_ML = os.getenv("QZTN_USE_ML", os.getenv("QZTN_ENABLE_ML_ENGINE", "1")) == "1"
+USE_G2 = os.getenv("QZTN_USE_G2", os.getenv("QZTN_ENABLE_G2_TAMPER_SIGNAL", "1")) == "1"
+USE_ADAPTIVE_POLICY = os.getenv("QZTN_USE_ADAPTIVE_POLICY", os.getenv("QZTN_ENABLE_ADAPTIVE_ENFORCEMENT", "1")) == "1"
+
+# Backward compatibility aliases
+ENABLE_QKD = USE_QKD
+ENABLE_QBER_TELEMETRY = USE_QBER
+ENABLE_ML_ENGINE = USE_ML
+ENABLE_G2_TAMPER_SIGNAL = USE_G2
+ENABLE_ADAPTIVE_ENFORCEMENT = USE_ADAPTIVE_POLICY
 
 # Create directories if they don't exist
 os.makedirs(MODELS_DIR, exist_ok=True)

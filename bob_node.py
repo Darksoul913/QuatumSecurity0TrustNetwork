@@ -7,7 +7,7 @@ import pickle
 import threading
 import hashlib
 from src.infrastructure import config
-from src.infrastructure.logger import get_logger
+from src.infrastructure.logger import get_logger, log_structured_event
 from src.infrastructure.channel import QuantumChannel
 from src.infrastructure.noise import NoiseInjector
 from src.auth.tls_server import TLSServer
@@ -15,8 +15,10 @@ from src.qkd import bob, sifting, reconciliation, privacy_amplification
 from src.crypto import aes_gcm
 from src.integrity import g2_receiver
 from src.ml import model_loader, feature_engineering
-from src.telemetry import qber_monitor, feature_vector
+from src.ml.feature_vector import build_feature_vector, normalize_features
+from src.telemetry import qber_monitor
 from src.policy.enforcer import ZeroTrustEnforcer
+import uuid
 
 logger = get_logger("BobNode")
 
@@ -104,7 +106,7 @@ def run_bob():
     reconciled_bob_key = reconciliation.simple_reconciliation(alice_oracle_sifted, bob_sifted)
     
     # Privacy Amplification or classical-key ablation
-    if config.ENABLE_QKD:
+    if config.USE_QKD:
         aes_key = privacy_amplification.apply_hash(reconciled_bob_key)
     else:
         logger.warning("QKD ablation enabled: using fixed classical demo key.")
@@ -121,7 +123,7 @@ def run_bob():
         monitor.add_qber_sample(sample)
         
     q_mean, q_var, q_crossings = monitor.get_statistics()
-    if not config.ENABLE_QBER_TELEMETRY:
+    if not config.USE_QBER:
         logger.warning("QBER telemetry ablation enabled: zeroing physical-layer features.")
         q_mean, q_var, q_crossings = 0.0, 0.0, 0
     
@@ -144,19 +146,12 @@ def run_bob():
     
     # Phase 5: Feature Engineering
     url_len, url_ent = feature_engineering.extract_url_features(url)
-    features = feature_engineering.combine_features(url_len, url_ent, q_mean, q_var, q_crossings)
+    features = build_feature_vector(url_len, url_ent, q_mean, q_var, q_crossings)
     
-    # Phase 6: QSVM Risk Prediction
-    X_inference = np.array([features], dtype=np.float32)
-    # Simple normalization mapping to 0-1 for prediction stability
-    # In reality we'd save the scaler from training. Using rough bounds here.
-    X_inference[0, 0] = min(1.0, X_inference[0, 0] / 100.0) # len
-    X_inference[0, 1] = min(1.0, X_inference[0, 1] / 5.0)   # ent
-    X_inference[0, 2] = min(1.0, X_inference[0, 2] / 0.5)   # mean
-    X_inference[0, 3] = min(1.0, X_inference[0, 3] / 0.02)  # var
-    X_inference[0, 4] = min(1.0, X_inference[0, 4] / 20.0)  # crossings
+    # Phase 6: QSVM/VQC Risk Prediction
+    X_inference = normalize_features(features).reshape(1, -1)
     
-    if config.ENABLE_ML_ENGINE:
+    if config.USE_ML:
         prediction = np.squeeze(classifier.predict(X_inference))
         if prediction.ndim > 0 and len(np.atleast_1d(prediction)) > 1:
             risk_score = int(np.argmax(prediction))
@@ -167,19 +162,37 @@ def run_bob():
         risk_score = 0
     
     # Phase 8: G2 quantum-assisted probabilistic tamper signaling
-    if config.ENABLE_G2_TAMPER_SIGNAL:
-        integrity_result = g2_receiver.verify_g2_state(g1_sv, ciphertext)
+    if config.USE_G2:
+        tamper_signal = g2_receiver.verify_g2_state(g1_sv, ciphertext)
     else:
         logger.warning("G2 ablation enabled: suppressing tamper signal.")
-        integrity_result = 0
+        tamper_signal = 0
+        
+    tamper_anomaly = bool(tamper_signal != 0)
     
     # Phase 9: Policy Enforcer (G3)
-    if config.ENABLE_ADAPTIVE_ENFORCEMENT:
-        decision = policy_enforcer.evaluate(risk_score, integrity_result)
+    if config.USE_ADAPTIVE_POLICY:
+        decision = policy_enforcer.evaluate(risk_score, tamper_signal)
         policy_enforcer.execute_action(decision)
     else:
         logger.warning("Adaptive enforcement ablation enabled: static trust ALLOW after TLS.")
         decision = True
+        
+    # Log structured runtime event (schema version 1.0)
+    session_id = str(uuid.uuid4())
+    trial_id = str(uuid.uuid4())
+    scenario = "eve" if config.EVE_ACTIVE else ("noise" if config.ENV_NOISE_P > 0.0 else "clean")
+    
+    log_structured_event(
+        session_id=session_id,
+        trial_id=trial_id,
+        scenario=scenario,
+        qber_mean=q_mean,
+        risk_score=risk_score,
+        tamper_signal=tamper_signal,
+        tamper_anomaly=tamper_anomaly,
+        decision=decision
+    )
     
     if decision:
         # Decrypt payload

@@ -31,13 +31,42 @@ class FrozenClassifier:
             # Predict the class with the highest probability
             return np.argmax(forward_pass, axis=1)
 
-def load_model():
-    """Loads the pre-trained QSVM weights for runtime inference."""
-    if not os.path.exists(config.WEIGHTS_FILE):
-        raise FileNotFoundError(f"Model weights not found at {config.WEIGHTS_FILE}. Run 'python -m src.ml.train' first.")
+class ClassicalFallbackClassifier:
+    """Fallback classifier trained on-the-fly when QSVM weights are unavailable."""
+    def __init__(self):
+        from sklearn.svm import SVC
+        from src.ml.dataset import load_processed_data
         
-    logger.info(f"Loading pre-trained QSVM weights from {config.WEIGHTS_FILE}...")
-    weights = np.load(config.WEIGHTS_FILE)
-    
-    vqc = create_qsvm()
-    return FrozenClassifier(vqc, weights)
+        logger.warning("Initializing Classical Fallback Classifier (RBF SVM)...")
+        try:
+            X, y = load_processed_data()
+            self.model = SVC(kernel="rbf", probability=False, random_state=config.RANDOM_SEED)
+            self.model.fit(X, y)
+            logger.info("Classical Fallback Classifier trained successfully.")
+        except Exception as e:
+            logger.error(f"Failed to train Classical Fallback Classifier: {e}")
+            self.model = None
+
+    def predict(self, X):
+        if self.model is not None:
+            return self.model.predict(X)
+        else:
+            logger.error("No fallback model available. Predicting default LOW risk (0).")
+            # If shape is (N, D), return (N,)
+            return np.zeros(X.shape[0], dtype=np.int32)
+
+def load_model():
+    """Loads the pre-trained QSVM weights for runtime inference, with classical fallback."""
+    try:
+        if not os.path.exists(config.WEIGHTS_FILE):
+            logger.warning(f"Model weights file not found at {config.WEIGHTS_FILE}. Falling back to classical baseline.")
+            return ClassicalFallbackClassifier()
+            
+        logger.info(f"Loading pre-trained QSVM weights from {config.WEIGHTS_FILE}...")
+        weights = np.load(config.WEIGHTS_FILE)
+        
+        vqc = create_qsvm()
+        return FrozenClassifier(vqc, weights)
+    except Exception as e:
+        logger.warning(f"Failed to load QSVM model weights ({e}). Falling back to classical baseline.")
+        return ClassicalFallbackClassifier()

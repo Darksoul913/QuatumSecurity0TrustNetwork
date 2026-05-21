@@ -21,22 +21,22 @@ class ZeroTrustEnforcer:
             3: "CRITICAL"
         }
 
-    def evaluate(self, risk_score: int, integrity_result: int) -> bool:
+    def evaluate(self, risk_score: int, tamper_signal: int) -> bool:
         """
         Evaluate transmission safety.
         risk_score: 0-3 from QSVM.
-        integrity_result: 0 (clean signal), 1 (tamper/noise signal) from G2.
+        tamper_signal: 0 (clean signal), 1 (tamper/noise signal) from G2.
         Returns:
             True if ALLOW
             False if BLOCK
         """
         risk_level = self.risk_mapping.get(risk_score, "UNKNOWN")
-        logger.info(f"Policy Evaluation - Risk: {risk_level} ({risk_score}), G2 tamper signal: |{integrity_result}⟩")
+        logger.info(f"Policy Evaluation - Risk: {risk_level} ({risk_score}), G2 tamper signal: |{tamper_signal}⟩")
         
         # Fundamental Zero Trust Logic:
         # 1. Any out-of-band tamper signal -> IMMEDIATE BLOCK
-        if integrity_result != 0:
-            logger.warning("[POLICY DECISION] BLOCK: G2 tamper signal observed (state collapsed to |1⟩).")
+        if tamper_signal != 0:
+            logger.warning("[POLICY DECISION] BLOCK: G2 Tamper anomaly detected (state collapsed to |1⟩).")
             return False
             
         # 2. Unacceptable application-layer risk -> IMMEDIATE BLOCK

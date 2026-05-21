@@ -61,7 +61,7 @@ def run_alice(payload_text="Top Secret Quantum Data"):
     # Since Bob does the work, Alice just takes her sifted key.
     
     # Privacy Amplification or classical-key ablation
-    if config.ENABLE_QKD:
+    if config.USE_QKD:
         aes_key = privacy_amplification.apply_hash(alice_sifted)
     else:
         logger.warning("QKD ablation enabled: using fixed classical demo key.")

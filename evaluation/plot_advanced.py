@@ -71,11 +71,10 @@ def plot_classifier_comparison():
     ax.set_title('Classifier Performance Comparison (5-Fold CV)')
     ax.set_xticks(x)
     ax.set_xticklabels(summary_mean.index)
-    ax.legend(loc='lower right')
+    ax.legend(loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0.)
     ax.set_ylim(0, 1.1)
     
-    fig.tight_layout()
-    fig.savefig(RESULTS_DIR / "fig1_classifier_comparison.png", dpi=300)
+    fig.savefig(RESULTS_DIR / "fig1_classifier_comparison.png", dpi=300, bbox_inches='tight')
     plt.close(fig)
 
 def plot_roc_curves():
@@ -158,11 +157,10 @@ def plot_ablation_study():
     xticklabels = [f"{row.ablation_id}\n({row.removed_component})" for _, row in df.iterrows()]
     ax.set_xticks(x)
     ax.set_xticklabels(xticklabels, rotation=45, ha="right")
-    ax.legend(loc='lower left')
+    ax.legend(loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0.)
     ax.set_ylim(0, 1.1)
     
-    fig.tight_layout()
-    fig.savefig(RESULTS_DIR / "fig3_ablation_study.png", dpi=300)
+    fig.savefig(RESULTS_DIR / "fig3_ablation_study.png", dpi=300, bbox_inches='tight')
     plt.close(fig)
 
 def plot_qber_distribution():

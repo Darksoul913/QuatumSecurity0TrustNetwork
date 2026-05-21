@@ -37,11 +37,11 @@ def verify_g2_state(received_ancilla: Statevector, received_ciphertext: bytes) -
     
     # 3. Measure
     outcome, _ = recovered_sv.measure([0])
-    result = int(outcome)
+    tamper_signal = int(outcome)
     
-    if result == 0:
-        logger.info("G2 tamper signal: clean (returned to |0⟩)")
+    if tamper_signal == 0:
+        logger.info("G2 Tamper signal clean (returned to |0⟩)")
     else:
-        logger.warning("G2 tamper signal: anomaly observed (collapsed to |1⟩)")
+        logger.warning("G2 Tamper anomaly detected (collapsed to |1⟩)")
         
-    return result
+    return tamper_signal

@@ -61,28 +61,33 @@ def train_risk_model(X: np.ndarray, y: np.ndarray):
 
 
 def scenario_feature(base: np.ndarray, scenario: str, use_qber: bool, rng: np.random.Generator) -> np.ndarray:
-    x = base.copy()
+    from src.ml.feature_vector import normalize_features, scaler
+    if not scaler._loaded:
+        scaler.load()
+    
+    url_len = base[0] * scaler.scale[0] + scaler.mean[0]
+    url_ent = base[1] * scaler.scale[1] + scaler.mean[1]
+
     if not use_qber:
-        x[2:] = 0.0
-        return x
+        q_mean = 0.0
+        q_var = 0.0
+        crossings = 0
+    else:
+        if scenario == "clean":
+            q_mean = max(0.0, rng.normal(0.02, 0.01))
+            q_var = max(0.0, rng.normal(0.0002, 0.0001))
+            crossings = rng.choice([0, 0, 0, 1])
+        elif scenario == "eve":
+            q_mean = max(0.0, rng.normal(0.25, 0.04))
+            q_var = max(0.0, rng.normal(0.006, 0.002))
+            crossings = rng.integers(8, 20)
+        else:  # environmental noise
+            q_mean = max(0.0, rng.normal(0.08, 0.03))
+            q_var = max(0.0, rng.normal(0.003, 0.001))
+            crossings = rng.integers(0, 6)
 
-    if scenario == "clean":
-        q_mean = max(0.0, rng.normal(0.02, 0.01))
-        q_var = max(0.0, rng.normal(0.0002, 0.0001))
-        crossings = rng.choice([0, 0, 0, 1])
-    elif scenario == "eve":
-        q_mean = max(0.0, rng.normal(0.25, 0.04))
-        q_var = max(0.0, rng.normal(0.006, 0.002))
-        crossings = rng.integers(8, 20)
-    else:  # environmental noise
-        q_mean = max(0.0, rng.normal(0.08, 0.03))
-        q_var = max(0.0, rng.normal(0.003, 0.001))
-        crossings = rng.integers(0, 6)
-
-    x[2] = min(1.0, q_mean / 0.30)
-    x[3] = min(1.0, q_var / 0.02)
-    x[4] = min(1.0, crossings / 20.0)
-    return x
+    raw_features = np.array([url_len, url_ent, q_mean, q_var, crossings], dtype=np.float32)
+    return normalize_features(raw_features)
 
 
 def g2_signal(scenario: str, use_g2: bool, rng: np.random.Generator, k_ancilla: int) -> int:
@@ -144,7 +149,8 @@ def run_trials(trials: int, k_ancilla: int) -> pd.DataFrame:
                         "scenario": scenario,
                         "attack_present": attack_present,
                         "risk_score": risk_score,
-                        "g2_tamper_signal": tamper_signal,
+                        "tamper_signal": tamper_signal,
+                        "tamper_anomaly": bool(tamper_signal != 0),
                         "decision": "ALLOW" if allow else "BLOCK",
                     }
                 )

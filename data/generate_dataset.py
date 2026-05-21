@@ -15,9 +15,11 @@ if str(ROOT) not in sys.path:
 
 import pandas as pd
 import numpy as np
+import json
 from src.infrastructure import config
 from src.infrastructure.logger import get_logger
 from src.ml.feature_engineering import extract_url_features
+from src.ml.feature_vector import build_feature_vector, scaler
 
 # Apply deterministic seed
 config.apply_seed()
@@ -94,8 +96,8 @@ def generate():
         # Channel features
         qmean, qvar, qcross = synthetic_qber_for_label(label)
         
-        # 5-dimensional feature vector
-        features = [length, entropy, qmean, qvar, qcross]
+        # 5-dimensional feature vector using central builder
+        features = build_feature_vector(length, entropy, qmean, qvar, qcross)
         
         X_list.append(features)
         y_list.append(label)
@@ -103,20 +105,29 @@ def generate():
     X = np.array(X_list, dtype=np.float32)
     y = np.array(y_list, dtype=np.int32)
     
-    # Normalize X (MinMax scaling) to fit into [0, 1] range for Qiskit feature map
-    # We do simple min-max scaling across each column
-    for col in range(X.shape[1]):
-        col_min = X[:, col].min()
-        col_max = X[:, col].max()
-        if col_max > col_min:
-            X[:, col] = (X[:, col] - col_min) / (col_max - col_min)
-        else:
-            X[:, col] = 0.0
+    logger.info("Fitting and saving CentralScaler parameters...")
+    scaler.fit(X)
+    X_scaled = scaler.transform(X)
 
-    logger.info("Features normalized. Saving to data/processed/ ...")
-    np.save(os.path.join(config.PROCESSED_DATA_DIR, "X.npy"), X)
+    logger.info("Saving processed datasets and manifest...")
+    np.save(os.path.join(config.PROCESSED_DATA_DIR, "X.npy"), X_scaled)
     np.save(os.path.join(config.PROCESSED_DATA_DIR, "y.npy"), y)
-    logger.info(f"Generated {len(X)} processed samples successfully.")
+    
+    # Save dataset manifest
+    manifest_path = os.path.join(config.DATA_DIR, "dataset_manifest.json")
+    manifest = {
+        "seed": config.RANDOM_SEED,
+        "num_samples": len(X),
+        "generator_version": "1.0",
+        "overlap_config": {
+            "noisy_benign_p": 0.15,
+            "stealth_attack_p": 0.10
+        }
+    }
+    with open(manifest_path, "w") as f:
+        json.dump(manifest, f, indent=4)
+        
+    logger.info(f"Generated {len(X)} processed samples. Manifest saved to {manifest_path}.")
 
 if __name__ == "__main__":
     generate()

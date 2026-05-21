@@ -1,3 +1,8 @@
+# NOTE:
+# This environment simulates quantum-network telemetry and
+# orchestration behavior. It does not model physical photonic
+# hardware characteristics or detector-level quantum noise.
+
 import argparse
 import os
 import subprocess
