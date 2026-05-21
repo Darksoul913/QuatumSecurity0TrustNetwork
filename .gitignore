@@ -17,6 +17,7 @@ certs/
 models/
 data/processed/
 evaluation/results/
+docs/
 
 # LaTeX build artifacts (from docs/)
 *.aux
