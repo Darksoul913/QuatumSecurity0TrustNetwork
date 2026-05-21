@@ -20,6 +20,7 @@ evaluation/results/
 docs/
 
 # LaTeX build artifacts (from docs/)
+*.tex
 *.aux
 *.fdb_latexmk
 *.fls
@@ -33,6 +34,7 @@ docs/
 *.toc
 *.lof
 *.lot
+*.md
 
 # macOS specific
 .DS_Store
